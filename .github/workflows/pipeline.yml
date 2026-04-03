@@ -1,0 +1,253 @@
+# NOTE: Shared workflow for other repo
+name: Terraform CI
+
+on:
+  workflow_call:
+    inputs:
+      terraform_directory:
+        type: string
+        description: "Path to the directory where terraform is setup"
+        required: true
+      terraform_secrets_template_path:
+        type: string
+        description: "Path to the file for secrets.template.tfvars.tmpl relative to terraform_directory"
+        required: true
+      terragrunt_plan:
+        type: boolean
+        description: "Run terraform plan"
+        default: false
+      terragrunt_apply:
+        type: boolean
+        description: "Run terraform apply"
+        default: false
+      # AWS
+      aws_credential_setup:
+        type: boolean
+        description: "Setup credentials for AWS"
+        default: false
+      aws_credential_role_to_assume:
+        type: string
+        description: "Role to assume for the AWS"
+      aws_credential_region:
+        type: string
+        description: "AWS region"
+    secrets:
+      ENV_VARS:
+        description: "ENV Vars passed to terraform_secrets_template_path and terragrunt commands"
+        required: true
+
+jobs:
+  pre_commit_check:
+    name: Pre-Commit check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Terragrunt and OpenTofu
+        uses: gruntwork-io/terragrunt-action@v3
+
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+          echo "$HOME/.tflint.d/bin" >> "$GITHUB_PATH"
+
+      # 3. Run pre-commit hooks with built-in caching
+      - uses: pre-commit/action@v3.0.1
+
+  terragrunt-plan:
+    name: 'Terragrunt Plan'
+    runs-on: ubuntu-latest
+    needs: pre_commit_check
+    if: ${{ inputs.terragrunt_plan }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.terraform_directory }}
+
+    permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read
+      pull-requests: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: true
+
+    - name: Install Terragrunt and OpenTofu
+      uses: gruntwork-io/terragrunt-action@v3
+
+    - name: Load ENV_VARS
+      run: |
+        while IFS= read -r line; do
+          # Skip empty lines or comments
+          [[ -z "$line" || "$line" == \#* ]] && continue
+
+          key="${line%%=*}"
+          value="${line#*=}"
+          echo "::add-mask::$value"
+          # expose as outputs
+          echo "$key=$value" >> "$GITHUB_ENV"
+        done <<< "${{ secrets.ENV_VARS }}"
+
+    - name: Render tfvars file
+      run: |
+        envsubst < "${{ inputs.terraform_secrets_template_path }}" > terraform.auto.tfvars
+        echo "Generated tfvars:"
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6.0.0
+      if: ${{ inputs.aws_credential_setup }}
+      with:
+        role-to-assume: ${{ inputs.aws_credential_role_to_assume }}
+        aws-region: ${{ inputs.aws_credential_region }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+
+    - name: Terragrunt Init
+      id: init
+      run: terragrunt init
+      continue-on-error: true
+
+    - name: Terragrunt Plan
+      if: steps.init.outcome == 'success'
+      id: plan
+      run: |
+        set +e
+
+        terragrunt plan -out=tfplan -no-color -input=false \
+        > plan.txt 2>&1
+
+        PLAN_EXIT_CODE=$?
+
+        echo "PLAN<<EOF" >> "$GITHUB_OUTPUT"
+
+        if [ "$PLAN_EXIT_CODE" -eq 0 ]; then
+        # Replace raw output with formatted plan
+        terragrunt show -no-color tfplan >> plan.txt
+        cat plan.txt >> "$GITHUB_OUTPUT"
+        else
+        # Show the error output captured in plan.txt
+        cat plan.txt >> "$GITHUB_OUTPUT"
+        fi
+
+        echo "EOF" >> "$GITHUB_OUTPUT"
+
+        exit "$PLAN_EXIT_CODE"
+      continue-on-error: true
+
+    - name: Add Plan Comment
+      uses: actions/github-script@v7
+      env:
+        INIT_OUTCOME: ${{ steps.init.outcome }}
+        PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        PLAN_OUTPUT: ${{ steps.plan.outputs.PLAN }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        EVENT_NAME: ${{ github.event_name}}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          // unique identifier to reliably find the comment
+          const BOT_ID = '<!--terra-bot-->';
+
+          // 1. Retrieve existing bot comments for the PR
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          })
+
+          // Search for the comment using the unique ID instead of fragile text
+          const botComment = comments.find(comment => {
+            return comment.user.type === 'Bot' && comment.body.includes(BOT_ID)
+          })
+
+          // 2. Prepare format of the comment
+          // Use step outcomes (success/failure) in the main header for clarity
+          const output = `#### Terragrunt Initialization ⚙️\`${ process.env.INIT_OUTCOME }\`
+          #### Terragrunt Plan 📖\`${ process.env.PLAN_OUTCOME }\`
+
+          <details><summary>Show Plan</summary>
+
+          \`\`\`\n
+          ${process.env.PLAN_OUTPUT}
+          \`\`\`
+
+          </details>
+
+          *Pusher: @${ process.env.GITHUB_ACTOR }, Action: \`${ process.env.EVENT_NAME }\`, Workflow: \`${ process.env.GITHUB_WORKFLOW }\`*
+          ${BOT_ID}`; // <-- Append the unique ID to the output
+
+          // 3. If we have a comment, update it, otherwise create a new one
+          if (botComment) {
+            github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: output
+            })
+          } else {
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+          }
+
+  terragrunt-apply:
+    name: Terragrunt Apply
+    runs-on: ubuntu-latest
+    if: ${{ inputs.terragrunt_apply }}
+
+    permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read
+      pull-requests: write
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.terraform_directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: true
+
+      - name: Install Terragrunt and OpenTofu
+        uses: gruntwork-io/terragrunt-action@v3
+
+      - name: Load ENV_VARS
+        run: |
+          while IFS= read -r line; do
+            # Skip empty lines or comments
+            [[ -z "$line" || "$line" == \#* ]] && continue
+
+            key="${line%%=*}"
+            value="${line#*=}"
+            echo "::add-mask::$value"
+            # expose as outputs
+            echo "$key=$value" >> "$GITHUB_ENV"
+          done <<< "${{ secrets.ENV_VARS }}"
+
+      - name: Render tfvars file
+        run: |
+          envsubst < "${{ inputs.terraform_secrets_template_path }}" > terraform.auto.tfvars
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.0.0
+        if: ${{ inputs.aws_credential_setup }}
+        with:
+          role-to-assume: ${{ inputs.aws_credential_role_to_assume }}
+          aws-region: ${{ inputs.aws_credential_region }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+
+      - name: Terragrunt Init
+        run: terragrunt init
+
+      - name: Terragrunt Apply
+        run: terragrunt apply -auto-approve -input=false -no-color
