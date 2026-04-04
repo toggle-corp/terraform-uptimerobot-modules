@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.1.1](https://github.com/toggle-corp/terraform-uptimerobot-modules/compare/v0.1.0..v0.1.1) - 2026-04-04
+### Changes:
+
+#### 🚀  Features
+
+- *(workflow)* Upgrade actions - ([c545230](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/c54523011aa3d10be5eb398f6cf7a8bd1ec69506))
+- Reusable workflow - ([fea35b0](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/fea35b0d415a85bb2e4d7a1e3cbdfda63a7ca6a3))
+
+#### 🐛 Bug Fixes
+
+- Disable recurrence for http/cron monitor - ([bd4d18d](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/bd4d18db120fbcd76941cf53e66e1d8111059798))
+- Release argument issue - ([8281c0c](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/8281c0c6224823dcd750580b68505bf65555f93c))
+
+#### 📚 Documentation
+
+- Update README - ([80e33fd](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/80e33fd82042c9f83051f3564ce11e2800de7d6e))
+
+
 ## [v0.1.0] - 2026-04-03
 ### Changes:
 
