@@ -10,8 +10,9 @@ resource "uptimerobot_monitor" "main" {
   assigned_alert_contacts = [
     for id in var.assigned_alert_contacts : {
       alert_contact_id = id
-      threshold        = 3    # Send after 3m
-      recurrence       = 2880 # repeat every 2 days
+      # NOTE: High threshold is not supported yet
+      threshold  = 0,
+      recurrence = 0
     }
   ]
 
