@@ -19,4 +19,4 @@ export GIT_CLIFF__REMOTE__GITHUB__OWNER=toggle-corp
 export GIT_CLIFF__REMOTE__GITHUB__REPO=terraform-uptimerobot-modules
 
 # Forward the argument - used for pre-fill version
-"$SCRIPT_DIR/fugit/scripts/release.sh" "$@"
+"$SCRIPT_DIR/fugit/scripts/release.sh" "${@:-}"
