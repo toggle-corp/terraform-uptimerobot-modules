@@ -36,6 +36,10 @@ on:
         description: "ENV Vars passed to terraform_secrets_template_path and terragrunt commands"
         required: true
 
+# TODO
+# - Throw error if both terragrunt_plan and terragrunt_apply is true
+# - Throw error after adding comment in PR for terragrunt plan failure instead of silent failure
+
 jobs:
   pre_commit_check:
     name: Pre-Commit check
