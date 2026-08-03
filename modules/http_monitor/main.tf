@@ -17,6 +17,7 @@ resource "uptimerobot_monitor" "main" {
   ]
 
   name                = var.name
+  group_id            = var.group_id
   type                = var.type
   url                 = var.url
   custom_http_headers = var.custom_http_headers

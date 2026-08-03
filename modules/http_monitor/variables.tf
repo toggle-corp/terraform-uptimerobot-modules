@@ -77,3 +77,9 @@ variable "tags" {
   description = "Tags for the monitor"
   type        = list(string)
 }
+
+variable "group_id" {
+  description = "Monitor group ID to assign the monitor to. Use 0 for the default group. Default: null (unmanaged)"
+  type        = number
+  default     = null
+}
