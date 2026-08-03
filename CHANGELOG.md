@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.2.0](https://github.com/toggle-corp/terraform-uptimerobot-modules/compare/v0.1.1..v0.2.0) - 2026-08-03
+### Changes:
+
+#### 🚀  Features
+
+- *(cron_monitor)* [**breaking**] Add group_id, drop url - ([2d50ef2](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/2d50ef23c2e007263395e48f648cd423bcf2e374))
+- Add group_id support to monitor modules - ([f27e5b9](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/f27e5b96fa1a2bffdd0fd08021eee3fd29b4c536))
+
+
 ## [v0.1.1](https://github.com/toggle-corp/terraform-uptimerobot-modules/compare/v0.1.0..v0.1.1) - 2026-04-04
 ### Changes:
 
