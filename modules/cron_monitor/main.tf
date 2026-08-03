@@ -12,8 +12,8 @@ resource "uptimerobot_monitor" "main" {
 
   http_method_type = null
 
-  name = var.name
-  url  = var.url
-  type = var.type
-  tags = var.tags
+  name     = var.name
+  group_id = var.group_id
+  type     = var.type
+  tags     = var.tags
 }
