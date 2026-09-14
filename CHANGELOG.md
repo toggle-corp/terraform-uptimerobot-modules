@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.0](https://github.com/toggle-corp/terraform-uptimerobot-modules/compare/v0.2.0..v0.3.0) - 2026-09-14
+### Changes:
+
+#### 🐛 Bug Fixes
+
+- *(ci)* Install tflint via setup-tflint action - ([fa3a9f8](https://github.com/toggle-corp/terraform-uptimerobot-modules/commit/fa3a9f8d7f732e3fee0fdfe24d15bb51f1be6566))
+
+
 ## [v0.2.0](https://github.com/toggle-corp/terraform-uptimerobot-modules/compare/v0.1.1..v0.2.0) - 2026-08-03
 ### Changes:
 
