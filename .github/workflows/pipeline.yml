@@ -49,9 +49,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v3
 
       - name: Install TFLint
-        run: |
-          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-          echo "$HOME/.tflint.d/bin" >> "$GITHUB_PATH"
+        uses: terraform-linters/setup-tflint@v6
 
       # 3. Run pre-commit hooks with built-in caching
       - uses: pre-commit/action@v3.0.1
